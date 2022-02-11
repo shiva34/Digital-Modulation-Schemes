@@ -1,12 +1,7 @@
-%We try to stimulate transmission of our message using SSB SC (Single
-%Sideband Supressed Carrier Transmission system.
-% here frequencies produced by amplitude modulation are symmetrically 
-%spaced above and below the carrier frequency and the carrier level is 
-%reduced to the lowest practical level so unlike AM here the carrier is not transmitted.
-clc;  %clear command window
-clear all;  %clear our workspace
-close all;  %closes all other workable windows
-%---------Defining parameters-----------------------%
+clc;
+clear all;
+close all;
+
 A1=1;          % message signal Amplitude
 Ac=2;          % carrier signal Amplitude
 fm=10;         % message signal frequency taken (10 Hz here)
@@ -16,8 +11,6 @@ mod=1;         % Modulation index we take 1
 fs=100*fm;       % sampling freq 100 times that of message signal(1000 Hz)
 Ts=1/fs;       % sampling time (0.001 sec)
 t=0:Ts:5/fm;    % Generating the time vector for 5 periods of message signal (period =1/fm)
-
-%----------Defining and Ploting message and carrier signals---%
 
 message= A1*cos(2*pi*fm*t);  % message signal frequency 10 Hz
 carrier= Ac*cos(2*pi*fc*t);  % carrier signal Freq=200Hz
@@ -40,12 +33,10 @@ title('Time Domain Carrier signal');
 grid;
 hold on;
 
-%----- Creating the SSB Modulated signal and its Fourier Transform ---%
-
 % Hilbert transform of baseband 
 mh = imag(hilbert(message));  
   
-% Single Side Band with Upper Side Band  
+% SSB with USB
 modt = message.*carrier- mh.*carrierpi; 
 
 subplot(313);
@@ -54,12 +45,11 @@ xlabel('Time [sec]');
 ylabel('SSB y(t)');
 title('Time domain SSB SC Modulated Signal ');
 
-% To plot the signals in frequency domain
+% Plotting the signals in frequency domain
 modf=fftshift(fft(modt)); % fourier transform  of SSB SC modolated signal shifted for period -pi to pi
 mf=fftshift(fft(message)); % fourier transform  of message signal shifted for period -pi to pi
 cf=fftshift(fft(carrier)); % fourier transform  of carrier signal shifted for period -pi to pi
 f=linspace(-fs/2,fs/2,length(t)); %generating the frequency vector
-
 figure;
 subplot(311);   %To plot frequencies of message,carrier , SSB SC modulated signal in same plot
 plot(f,abs(mf));  %Plotting frequency response of message signal
@@ -73,46 +63,38 @@ plot(f,abs(cf));  %Plotting frequency response of carrier signal
 xlabel('Frequency [Hz]');
 ylabel('C(f)');
 title('Frequency Domain Carrier signal');
-
 hold on;
 subplot(313);
 plot(f,abs(modf));  %Plotting frequency response of SSB SC molulated signal
 xlabel('Frequency [Hz]');
 ylabel('SSB SC(f)');
 title('Frequency domain SSB SC Modulated Signal');
-%% 
 
-%-------------Demodulating SSB SC signal---------------------------------%
-% Demodulating the SSB SC signal using Coherent Detection the demodulation
-% This part is same as DSB SC so we use the sme function for this task too.
+%Demodulation
+
 % Step 1: Synchronous Demodulation using carrier
-Vc = DSBSC(modt,carrier,2);  % To demodulate the SSBSC modulated signal we can again use DSB SC 
-                                %as that function only multiplies the signals in input 
-                                 %which is what we need to do for demodulation.
+Vc = modt.*carrier;
 
-% Non-Coherent Detection Step 2: Low Pass RC Filter
-% fN = fs/2;
-% h = fir1(10,fc*2/fs, 'low');    %To make linear phase FIR Low Pass Filter.       
-% ym_rec = filter(h,1,Vc);
+% Step 2: Low Pass RC Filter
+
 [b,a] = butter(5,fm*3/fs);  %We can also use Butterworth Filter
 ym_rec = filter(b,a,Vc); % filtering the demodulated signal
 ym_rec = ym_rec - mean(ym_rec); %To reduce error
-ym_rec = ym_rec/Ac^2;   % a factor of AC^2 comes due to multiplying two times by carrier wave 
-                            %so we divide by that to get amplitude of message signal..
+ym_rec = ym_rec/Ac^2;   
+
 figure;
 plot(t, ym_rec,'LineWidth',2);  %Plotting the demodulated message signal
 hold on;
-plot(t,message,'r');   %plotting the origional message signal in the same plot
-%We get a very small offset on the demodulated signal but that is fine.
+plot(t,message,'r');
 title('demodulated SSB SC signal with origional message signal');
 legend("Demodulated SSB SC signal","message signal");
 xlabel('Time (s)');
 ylabel('Amplitude (Volts)');
-% To get the frequency
+
 Nf=length(ym_rec); %To take fft of Nf point
-ym_rec_fft = fftshift(fft(ym_rec,Nf));              % Frequency Response of retrieved message signal ,
-                                                              %we use the same number of points for fft
+ym_rec_fft = fftshift(fft(ym_rec,Nf));  % Frequency Response of retrieved message signal
 f = (-Nf/2:1:Nf/2-1)*fs/Nf;
+
 figure;
 subplot(211);
 plot(f,abs(ym_rec_fft));
@@ -121,7 +103,6 @@ title('Freq Response of demodulated SSB SC signal y_m(t)');
 xlabel('f(Hz)');
 ylabel('|Demod SSB SC(F)|');
 
-%To plot the frequency response of input message signal to compare result
 subplot(212);
 hold on; 
 plot(f,abs(mf));
