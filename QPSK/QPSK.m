@@ -11,23 +11,19 @@ clc;  %clear command window
 clear all;  %clear our workspace
 close all;  %closes all other workable windows
 
-%generate QPSK constellation as complex numbers
-k=double(1.0)/double(sqrt(2)); %The normalizing factor
-constellation=k*[1+1i -1+1i -1-1i 1-1i]; %To store constellation points ie. 1+1j , 1-1j ,  -1-1j , -1+1j in complex double
-gre=[0 1 3 2]; %This is used to map between non - gray and gray constellation points.
-%number of symbols in simulation
+nsymbols = 2000000; %  represents number of symbols used for stimulation. ie 10^5.
 
-%———Input Fields————————
-nsymbols = 200000; %  represents number of symbols used for stimulation. ie 10^5.
+EbN0dB = 0:0.01:10; % multiple Eb/N0 values from 0-10 dB 
+
 %Generating nsymbols random 2 bit symbols to use for DQPSK
 input=zeros(1,nsymbols);
 for k=1:nsymbols %Loop to generate 2 bit random inputs symbols.
  input(k)= randi([0, (2^2-1)]); %randomly generates a 2 bit number between 0 and 3 including both of them.
 end
-EbN0dB = 0:0.1:10; % multiple Eb/N0 values from 0-10 dB 
-inputc=constellation(input(:)+1); %will have the constellation symbols for non gray
-input_gray=gre(input(:)+1);%will get the corresponding gray input for the same constellation input.
-inputc=inputc.'; %Taking non conjugate transpose of input signal
+
+[inputc, input_gray, constellation ] = myModulator(input);
+
+gre=[0 1 3 2]; %This is used to map between non - gray and gray constellation points.
 
 number_EbN0dBs = length(EbN0dB); %Number of EbN0dB values to check
 perr_estimate = zeros(number_EbN0dBs,1); %To estimate error for each EbN0dB value and add it to estimate
@@ -39,14 +35,9 @@ for k=1:number_EbN0dBs %EbN0dB for loop
     sigma=sqrt(1/(2*ebno)); %The corresponding varience for noise.
     
     % add 2d Gaussian noise to our symbols.
-    received = inputc +sigma*randn(nsymbols,1)+j*sigma*randn(nsymbols,1); %For adding WNGN
-    decisions=zeros(nsymbols,1); %We initialize decisions with zeros corresponding to all n symbols for fast execution.
-    for n=1:nsymbols         
-        distances = abs(received(n)-constellation);%Absolute distance from each constellation point.
-        [min_dist,decisions(n)] = min(distances); %The minimum of those is choosen for that recieved point.
-    end
-    decisions_gray=gre(decisions);%Maps back non gray to gray
-    decisions=decisions-1;%To get it between 0 and 3.
+    received = inputc +sigma*randn(nsymbols,1)+1i*sigma*randn(nsymbols,1); %For adding WNGN
+    
+    [decisions, decisions_gray] = myDemodulator(nsymbols, received, constellation);
     
     %To calculate bit errors here, for faster execution.
     num=zeros(nsymbols,1);
